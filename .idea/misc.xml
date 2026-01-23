@@ -3,5 +3,5 @@
   <component name="Black">
     <option name="sdkName" value="Python 3.13 (fox-streaming-poc)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13 (sports-streaming-ragai)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13" project-jdk-type="Python SDK" />
 </project>
