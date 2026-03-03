@@ -1,4 +1,4 @@
-# Airflow version (use 3.x series – ARM64 native)
+# Airflow version (3.0.0 pulled successfully in your build, so keep it)
 airflowVersion: "3.0.0"
 
 # Executor – production choice
@@ -6,11 +6,11 @@ executor: "KubernetesExecutor"
 
 images:
   airflow:
-    repository: localhost/airflow-custom   # we'll build & load this
+    repository: localhost/airflow-custom   # your built & loaded image
     tag: "poc-latest"
     pullPolicy: IfNotPresent
 
-# Database – use bundled Postgres for POC
+# Database – bundled Postgres for POC
 postgresql:
   enabled: true
   auth:
@@ -22,20 +22,21 @@ postgresql:
     enabled: true
     size: 2Gi
 
-# Persistence for DAGs & logs (local PVC for POC)
+# DAGs persistence & git-sync (your public repo – HTTPS is fine & secure)
 dags:
   persistence:
     enabled: true
     size: 1Gi
   gitSync:
     enabled: true
-    repo: https://github.com/yourusername/sports-streaming-rag-ai.git   # ← CHANGE TO YOUR REAL REPO
+    repo: https://github.com/srathdataengg/sports-streaming-rag-ai.git  # ← your real repo
     branch: main
     rev: HEAD
     depth: 1
     period: 30s
-    subPath: airflow-poc/dags   # points to our dags/ folder in repo
-    # For private repo later: add sshKeySecret etc.
+    subPath: airflow-poc/dags   # ← correct path to your DAGs in the repo
+    # No sshKeySecret / credentialsSecret needed for public repo
+    # If repo becomes private later: add sshKeySecret + knownHosts (see notes below)
 
 logs:
   persistence:
@@ -46,13 +47,13 @@ logs:
   remote_base_log_folder: "s3://airflow-logs"
   remote_log_conn_id: "minio_default"
 
-# MinIO – deploy as subchart for POC (S3 for data lake + logs)
+# MinIO – deployed via subchart (S3-compatible for bronze/silver/gold + logs)
 minio:
-  enabled: true   # this deploys bitnami/minio subchart
+  enabled: true
   auth:
     rootUser: minioadmin
-    rootPassword: minioadmin123
-  defaultBuckets: "bronze,silver,gold,airflow-logs"   # auto-created
+    rootPassword: minioadmin123   # ← change this in real prod!
+  defaultBuckets: "bronze,silver,gold,airflow-logs"  # auto-created on startup
   persistence:
     enabled: true
     size: 10Gi
@@ -64,7 +65,7 @@ minio:
       cpu: 1
       memory: 2Gi
 
-# Connections – MinIO connection (used for S3 hook in DAGs + logging)
+# MinIO connection (for S3 hook in DAGs + remote logging)
 extraConnections:
   - id: minio_default
     type: aws
@@ -76,7 +77,7 @@ extraConnections:
         "region_name": "us-east-1"
       }
 
-# Workers – tuned for M1 (don't over-allocate)
+# Workers – tuned for M1 Mac (low resources to avoid OOM)
 workers:
   replicas: 2
   resources:
@@ -104,7 +105,7 @@ webserver:
     password: admin
     email: admin@example.com
 
-# Security – good habit
+# Security – good defaults
 securityContexts:
   pod:
     runAsUser: 50000
@@ -114,13 +115,13 @@ securityContexts:
     capabilities:
       drop: ["ALL"]
 
-# Expose UI
+# Expose UI – use port-forward for local POC
 webserver:
   service:
     type: ClusterIP
   ingress:
-    enabled: false   # we use port-forward for now
+    enabled: false
 
-# Disable redis (not needed for K8sExecutor)
+# No Redis needed for KubernetesExecutor
 redis:
   enabled: false
