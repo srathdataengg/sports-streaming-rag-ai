@@ -1,0 +1,10 @@
+apache-airflow-providers-cncf-kubernetes==10.3.0
+apache-airflow-providers-postgres==5.10.0
+apache-airflow-providers-http==4.13.3
+apache-airflow-providers-amazon==8.11.0     # for S3 / MinIO compat (boto3)
+apache-airflow-providers-apache-spark==4.1.0   # if we want Spark operators later
+pandas==2.2.2
+pyspark==3.5.3          # for local testing or if running pyspark code in pods
+boto3==1.35.24          # explicit for MinIO/S3
+requests==2.32.3
+pyarrow==17.0.0         # useful for parquet in silver/gold

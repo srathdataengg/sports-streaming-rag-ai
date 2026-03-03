@@ -1,0 +1,126 @@
+# Airflow version (use 3.x series – ARM64 native)
+airflowVersion: "3.0.0"
+
+# Executor – production choice
+executor: "KubernetesExecutor"
+
+images:
+  airflow:
+    repository: localhost/airflow-custom   # we'll build & load this
+    tag: "poc-latest"
+    pullPolicy: IfNotPresent
+
+# Database – use bundled Postgres for POC
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: airflow
+    username: airflow
+    password: airflow
+    database: airflow
+  persistence:
+    enabled: true
+    size: 2Gi
+
+# Persistence for DAGs & logs (local PVC for POC)
+dags:
+  persistence:
+    enabled: true
+    size: 1Gi
+  gitSync:
+    enabled: true
+    repo: https://github.com/yourusername/sports-streaming-rag-ai.git   # ← CHANGE TO YOUR REAL REPO
+    branch: main
+    rev: HEAD
+    depth: 1
+    period: 30s
+    subPath: airflow-poc/dags   # points to our dags/ folder in repo
+    # For private repo later: add sshKeySecret etc.
+
+logs:
+  persistence:
+    enabled: true
+    size: 5Gi
+  # Remote logging to MinIO (S3 compatible)
+  remote_logging: "True"
+  remote_base_log_folder: "s3://airflow-logs"
+  remote_log_conn_id: "minio_default"
+
+# MinIO – deploy as subchart for POC (S3 for data lake + logs)
+minio:
+  enabled: true   # this deploys bitnami/minio subchart
+  auth:
+    rootUser: minioadmin
+    rootPassword: minioadmin123
+  defaultBuckets: "bronze,silver,gold,airflow-logs"   # auto-created
+  persistence:
+    enabled: true
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 2Gi
+
+# Connections – MinIO connection (used for S3 hook in DAGs + logging)
+extraConnections:
+  - id: minio_default
+    type: aws
+    extra: |
+      {
+        "aws_access_key_id": "minioadmin",
+        "aws_secret_access_key": "minioadmin123",
+        "endpoint_url": "http://minio.minio.svc.cluster.local:9000",
+        "region_name": "us-east-1"
+      }
+
+# Workers – tuned for M1 (don't over-allocate)
+workers:
+  replicas: 2
+  resources:
+    requests:
+      cpu: "300m"
+      memory: "768Mi"
+    limits:
+      cpu: "1200m"
+      memory: "2Gi"
+
+scheduler:
+  resources:
+    requests:
+      cpu: "400m"
+      memory: "1Gi"
+
+webserver:
+  resources:
+    requests:
+      cpu: "200m"
+      memory: "512Mi"
+  defaultUser:
+    enabled: true
+    username: admin
+    password: admin
+    email: admin@example.com
+
+# Security – good habit
+securityContexts:
+  pod:
+    runAsUser: 50000
+    fsGroup: 0
+  container:
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop: ["ALL"]
+
+# Expose UI
+webserver:
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: false   # we use port-forward for now
+
+# Disable redis (not needed for K8sExecutor)
+redis:
+  enabled: false
